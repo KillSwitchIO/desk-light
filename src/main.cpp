@@ -1,4 +1,6 @@
 #include <FastLED.h>
+#include "AiEsp32RotaryEncoder.h"
+#include "Arduino.h"
 
 FASTLED_USING_NAMESPACE
 
@@ -19,6 +21,19 @@ FASTLED_USING_NAMESPACE
 #define DATA_PIN    23
 #define ARRAY_UP    19
 #define ARRAY_DOWN  21
+
+//Encoder
+#define ROTARY_ENCODER_A_PIN 25
+#define ROTARY_ENCODER_B_PIN 26
+#define ROTARY_ENCODER_BUTTON_PIN 27
+#define ROTARY_ENCODER_VCC_PIN -1
+
+AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_A_PIN, ROTARY_ENCODER_B_PIN, ROTARY_ENCODER_BUTTON_PIN, ROTARY_ENCODER_VCC_PIN);
+
+int test_limits = 2;
+
+
+
 
 // ESP8266
 // #define DATA_PIN    5
@@ -187,9 +202,52 @@ void debounceArrayUp()
     lastButtonStateArrayUp = pinReading;
 }
 
+void rotary_onButtonClick() {
+	//rotaryEncoder.reset();
+	//rotaryEncoder.disable();
+	rotaryEncoder.setBoundaries(-test_limits, test_limits, false);
+	test_limits *= 2;
+}
+
+void rotary_loop() {
+	//first lets handle rotary encoder button click
+	if (rotaryEncoder.currentButtonState() == BUT_RELEASED) {
+		//we can process it here or call separate function like:
+		rotary_onButtonClick();
+	}
+
+	//lets see if anything changed
+	int16_t encoderDelta = rotaryEncoder.encoderChanged();
+	
+	//optionally we can ignore whenever there is no change
+	if (encoderDelta == 0) return;
+	
+	//for some cases we only want to know if value is increased or decreased (typically for menu items)
+	if (encoderDelta>0) Serial.print("+");
+	if (encoderDelta<0) Serial.print("-");
+
+	//for other cases we want to know what is current value. Additionally often we only want if something changed
+	//example: when using rotary encoder to set termostat temperature, or sound volume etc
+	
+	//if value is changed compared to our last read
+	if (encoderDelta!=0) {
+		//now we need current value
+		int16_t encoderValue = rotaryEncoder.readEncoder();
+		//process new value. Here is simple output.
+		Serial.print("Value: ");
+		Serial.println(encoderValue);
+	} 
+	
+}
+
 void setup() {
+	Serial.begin(115200);
   delay(3000); // 3 second delay for recovery
   
+  rotaryEncoder.begin();
+	rotaryEncoder.setup([]{rotaryEncoder.readEncoder_ISR();});
+  rotaryEncoder.setBoundaries(0, 10, true);
+
   pinMode(ARRAY_UP, INPUT_PULLUP);
   pinMode(ARRAY_DOWN, INPUT_PULLUP);
 
@@ -199,6 +257,8 @@ void setup() {
 
 void loop()
 {
+	rotary_loop();
+
   // Call the current pattern function once, updating the 'leds' array
   gPatterns[gCurrentPatternNumber]();
 
