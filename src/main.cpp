@@ -32,8 +32,33 @@ AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_A_PIN, 
 
 int test_limits = 2;
 
+enum LedEncoderMode{
+	LED_COLOR = 0,
+	LED_MODE = 1,
+	LED_BRIGHTNESS = 2,
+};
+LedEncoderMode rotaryMode = LED_COLOR;
 
-
+LedEncoderMode nextEncoderMode(LedEncoderMode rotaryMode)
+{
+  LedEncoderMode temp = LED_COLOR;
+   switch(rotaryMode)
+   {
+      case LED_COLOR:
+        temp = LED_MODE;
+        break;
+      case LED_MODE:
+        temp = LED_BRIGHTNESS;
+        break;
+      case LED_BRIGHTNESS:
+        temp = LED_COLOR;
+        break;
+      default:
+        temp = LED_COLOR;
+        break;
+   }
+   return temp;
+}
 
 // ESP8266
 // #define DATA_PIN    5
@@ -202,18 +227,18 @@ void debounceArrayUp()
     lastButtonStateArrayUp = pinReading;
 }
 
-void rotary_onButtonClick() {
+void rotary_onButtonClick_sample() {
 	//rotaryEncoder.reset();
 	//rotaryEncoder.disable();
 	rotaryEncoder.setBoundaries(-test_limits, test_limits, false);
 	test_limits *= 2;
 }
 
-void rotary_loop() {
+void rotary_loop_sample() {
 	//first lets handle rotary encoder button click
 	if (rotaryEncoder.currentButtonState() == BUT_RELEASED) {
 		//we can process it here or call separate function like:
-		rotary_onButtonClick();
+		rotary_onButtonClick_sample();
 	}
 
 	//lets see if anything changed
@@ -237,7 +262,43 @@ void rotary_loop() {
 		Serial.print("Value: ");
 		Serial.println(encoderValue);
 	} 
+}
+
+void rotary_loop() {
+	//first lets handle rotary encoder button click
+	if (rotaryEncoder.currentButtonState() == BUT_RELEASED) {
+		//we can process it here or call separate function like:
+    rotaryMode = nextEncoderMode(rotaryMode);
+	}
+
+	//lets see if anything changed
+	int16_t encoderDelta = rotaryEncoder.encoderChanged();
 	
+	//optionally we can ignore whenever there is no change
+	if (encoderDelta == 0) return;
+	
+	//for some cases we only want to know if value is increased or decreased (typically for menu items)
+	if (encoderDelta>0) //Encoder turned right
+  {
+    nextPattern();
+  }
+
+	if (encoderDelta<0) //Encoder turned left
+  {
+    previousPattern();
+  }
+
+	//for other cases we want to know what is current value. Additionally often we only want if something changed
+	//example: when using rotary encoder to set termostat temperature, or sound volume etc
+	
+	//if
+	if (encoderDelta != 0) {
+		//now we need current value
+		int16_t encoderValue = rotaryEncoder.readEncoder();
+		//process new value. Here is simple output.
+		Serial.print("Value: ");
+		Serial.println(encoderValue);
+	} 
 }
 
 void setup() {
@@ -257,8 +318,6 @@ void setup() {
 
 void loop()
 {
-	rotary_loop();
-
   // Call the current pattern function once, updating the 'leds' array
   gPatterns[gCurrentPatternNumber]();
 
@@ -272,4 +331,5 @@ void loop()
   // EVERY_N_SECONDS( 10 ) { nextPattern(); } // change patterns periodically
   EVERY_N_MILLISECONDS( 20 ) { debounceArrayDown(); }
   EVERY_N_MILLISECONDS( 20 ) { debounceArrayUp(); } 
+  EVERY_N_MILLISECONDS( 20 ) { rotary_loop(); } 
 }
