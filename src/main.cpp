@@ -78,13 +78,15 @@ unsigned long debounceDelay = 50;    // the debounce time; increase if the outpu
 #define NUM_LEDS    103
 CRGB leds[NUM_LEDS];
 
-#define BRIGHTNESS         755
+#define MAXBRIGHTNESS      755
+int     BRIGHTNESS =       MAXBRIGHTNESS;
 #define FRAMES_PER_SECOND  120
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+uint8_t solidHue = 340; // rotating "base color" used by many of the patterns
 
 void rainbow() 
 {
@@ -171,6 +173,30 @@ void previousPattern()
   Serial.write("Previous Pattern");
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber - 1) % ARRAY_SIZE( gPatterns);
+}
+
+void brightnessUp()
+{
+  BRIGHTNESS = (BRIGHTNESS + 1) % MAXBRIGHTNESS; 
+  FastLED.setBrightness(BRIGHTNESS);
+}
+
+void brightnessDown()
+{
+  BRIGHTNESS = (BRIGHTNESS - 1) % MAXBRIGHTNESS; 
+  FastLED.setBrightness(BRIGHTNESS);
+}
+
+void hueUp()
+{
+  solidHue = (solidHue + 10) % 360; 
+  fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
+}
+
+void hueDown()
+{
+  solidHue = (solidHue - 10) % 360;
+  fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
 }
 
 void debounceArrayDown()
@@ -265,27 +291,48 @@ void rotary_loop_sample() {
 }
 
 void rotary_loop() {
-	//first lets handle rotary encoder button click
 	if (rotaryEncoder.currentButtonState() == BUT_RELEASED) {
-		//we can process it here or call separate function like:
     rotaryMode = nextEncoderMode(rotaryMode);
+    Serial.print("Mode: ");
+    Serial.println(rotaryMode);
 	}
 
-	//lets see if anything changed
 	int16_t encoderDelta = rotaryEncoder.encoderChanged();
 	
-	//optionally we can ignore whenever there is no change
 	if (encoderDelta == 0) return;
 	
 	//for some cases we only want to know if value is increased or decreased (typically for menu items)
-	if (encoderDelta>0) //Encoder turned right
-  {
-    nextPattern();
+	if (encoderDelta > 0) //Encoder turned right
+  {   
+    switch(rotaryMode)
+    {
+      case LED_COLOR:
+      default:
+        hueUp();
+        break;
+      case LED_MODE:
+        nextPattern();
+        break;
+      case LED_BRIGHTNESS:
+        brightnessUp();
+        break;
+    }
   }
 
-	if (encoderDelta<0) //Encoder turned left
-  {
-    previousPattern();
+	if (encoderDelta < 0) //Encoder turned left
+  {    switch(rotaryMode)
+    {
+      case LED_COLOR:
+      default:
+        hueDown();
+        break;
+      case LED_MODE:
+        nextPattern();
+        break;
+      case LED_BRIGHTNESS:
+        brightnessUp();
+        break;
+    }
   }
 
 	//for other cases we want to know what is current value. Additionally often we only want if something changed
