@@ -4,15 +4,6 @@
 
 FASTLED_USING_NAMESPACE
 
-// FastLED "100-lines-of-code" demo reel, showing just a few 
-// of the kinds of animation patterns you can quickly and easily 
-// compose using FastLED.  
-//
-// This example also shows one easy way to define multiple 
-// animations patterns and have them automatically rotate.
-//
-// -Mark Kriegsman, December 2014
-
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001000)
 #warning "Requires FastLED 3.1 or later; check github for latest code."
 #endif
@@ -60,10 +51,6 @@ LedEncoderMode nextEncoderMode(LedEncoderMode rotaryMode)
    return temp;
 }
 
-// ESP8266
-// #define DATA_PIN    5
-// #define ARRAY_UP    14
-// #define ARRAY_DOWN  12
 int lastButtonStateArrayDown = LOW;   // the previous reading from the input pin
 int lastButtonStateArrayUp = LOW;   // the previous reading from the input pin
 int buttonStateDown = LOW;   // the previous reading from the input pin
@@ -79,14 +66,14 @@ unsigned long debounceDelay = 50;    // the debounce time; increase if the outpu
 CRGB leds[NUM_LEDS];
 
 #define MAXBRIGHTNESS      755
-int     BRIGHTNESS =       MAXBRIGHTNESS;
 #define FRAMES_PER_SECOND  120
+int BRIGHTNESS = MAXBRIGHTNESS;
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
-uint8_t solidHue = 340; // rotating "base color" used by many of the patterns
+uint8_t solidHue = 240; // default blue hue
 
 void rainbow() 
 {
@@ -146,45 +133,43 @@ void juggle() {
   }
 }
 
-void blue()
+void solid()
 {
-  fill_solid(leds, NUM_LEDS, CRGB::Blue);
-}
-
-
-void purple()
-{
-  fill_solid(leds, NUM_LEDS, CRGB::DarkViolet);
+  fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
 }
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { purple, blue, rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm };
+SimplePatternList gPatterns = { solid, rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm };
 
 void nextPattern()
 {
-  Serial.write("Next Pattern");
+  Serial.println("Next Pattern");
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
 }
 
 void previousPattern()
 {
-  Serial.write("Previous Pattern");
+  Serial.println("Previous Pattern");
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber - 1) % ARRAY_SIZE( gPatterns);
 }
 
 void brightnessUp()
 {
-  BRIGHTNESS = (BRIGHTNESS + 1) % MAXBRIGHTNESS; 
+  BRIGHTNESS = (BRIGHTNESS + 1) % MAXBRIGHTNESS;
   FastLED.setBrightness(BRIGHTNESS);
+  Serial.print("Brightness: ");
+  Serial.println(BRIGHTNESS);
 }
 
 void brightnessDown()
 {
-  BRIGHTNESS = (BRIGHTNESS - 1) % MAXBRIGHTNESS; 
+  BRIGHTNESS = (BRIGHTNESS - 1) % MAXBRIGHTNESS;
   FastLED.setBrightness(BRIGHTNESS);
+  Serial.print("Brightness: ");
+  Serial.println(BRIGHTNESS);
 }
 
 void hueUp()
@@ -230,26 +215,19 @@ void debounceArrayUp()
 {
   int pinReading = digitalRead(ARRAY_UP);
   if (pinReading != lastButtonStateArrayUp) {
-      // reset the debouncing timer
       lastDebounceTimeArrayUp = millis();
     }
 
     if ((millis() - lastDebounceTimeArrayUp) > debounceDelay) {
-      // whatever the reading is at, it's been there for longer than the debounce
-      // delay, so take it as the actual current state:
-
-      // if the button state has changed:
       if (pinReading != buttonStateUp) {
         buttonStateUp = pinReading;
 
-        // only toggle the LED if the new button state is HIGH
         if (buttonStateUp == HIGH) {
           nextPattern();
         }
       }
     }
 
-    // save the reading. Next time through the loop, it'll be the lastButtonState:
     lastButtonStateArrayUp = pinReading;
 }
 
@@ -291,17 +269,17 @@ void rotary_loop_sample() {
 }
 
 void rotary_loop() {
-	if (rotaryEncoder.currentButtonState() == BUT_RELEASED) {
+	if (rotaryEncoder.currentButtonState() == BUT_RELEASED) 
+  {
     rotaryMode = nextEncoderMode(rotaryMode);
     Serial.print("Mode: ");
     Serial.println(rotaryMode);
 	}
 
 	int16_t encoderDelta = rotaryEncoder.encoderChanged();
-	
+
 	if (encoderDelta == 0) return;
-	
-	//for some cases we only want to know if value is increased or decreased (typically for menu items)
+
 	if (encoderDelta > 0) //Encoder turned right
   {   
     switch(rotaryMode)
@@ -320,32 +298,28 @@ void rotary_loop() {
   }
 
 	if (encoderDelta < 0) //Encoder turned left
-  {    switch(rotaryMode)
+  {    
+    switch(rotaryMode)
     {
       case LED_COLOR:
       default:
         hueDown();
         break;
       case LED_MODE:
-        nextPattern();
+        previousPattern();
         break;
       case LED_BRIGHTNESS:
-        brightnessUp();
+        brightnessDown();
         break;
     }
   }
-
-	//for other cases we want to know what is current value. Additionally often we only want if something changed
-	//example: when using rotary encoder to set termostat temperature, or sound volume etc
-	
-	//if
-	if (encoderDelta != 0) {
-		//now we need current value
-		int16_t encoderValue = rotaryEncoder.readEncoder();
-		//process new value. Here is simple output.
-		Serial.print("Value: ");
-		Serial.println(encoderValue);
-	} 
+	// if (encoderDelta != 0) {
+	// 	//now we need current value
+	// 	int16_t encoderValue = rotaryEncoder.readEncoder();
+	// 	//process new value. Here is simple output.
+	// 	Serial.print("Value: ");
+	// 	Serial.println(encoderValue);
+	// } 
 }
 
 void setup() {
@@ -366,7 +340,19 @@ void setup() {
 void loop()
 {
   // Call the current pattern function once, updating the 'leds' array
-  gPatterns[gCurrentPatternNumber]();
+  switch(rotaryMode)
+  {
+    case LED_COLOR:
+    default:
+      solid();
+      break;
+    case LED_MODE:
+      gPatterns[gCurrentPatternNumber]();
+      break;
+    case LED_BRIGHTNESS:
+      solid();
+      break;
+  }
 
   // send the 'leds' array out to the actual LED strip
   FastLED.show();  
@@ -375,8 +361,7 @@ void loop()
 
   // do some periodic updates
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
-  // EVERY_N_SECONDS( 10 ) { nextPattern(); } // change patterns periodically
-  EVERY_N_MILLISECONDS( 20 ) { debounceArrayDown(); }
-  EVERY_N_MILLISECONDS( 20 ) { debounceArrayUp(); } 
   EVERY_N_MILLISECONDS( 20 ) { rotary_loop(); } 
+  // EVERY_N_MILLISECONDS( 20 ) { debounceArrayDown(); }
+  // EVERY_N_MILLISECONDS( 20 ) { debounceArrayUp(); } 
 }
