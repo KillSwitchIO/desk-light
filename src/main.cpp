@@ -158,6 +158,8 @@ void previousPattern()
 
 void brightnessUp()
 {
+  //Look into Dimming and Brightening Colors - https://github.com/FastLED/FastLED/wiki/Pixel-reference
+  //Allows the use of percentage instead of stepping like the below method
   BRIGHTNESS = (BRIGHTNESS + 1) % MAXBRIGHTNESS;
   FastLED.setBrightness(BRIGHTNESS);
   Serial.print("Brightness: ");
