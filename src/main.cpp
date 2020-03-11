@@ -167,6 +167,7 @@ void brightnessUp()
 
 void brightnessDown()
 {
+  // BRIGHTNESS = leds[1].fadeLightBy(64);
   BRIGHTNESS = (BRIGHTNESS - 10) < MINBRIGHTNESS ? 255 : BRIGHTNESS - 10;
   FastLED.setBrightness(BRIGHTNESS);
   Serial.print("Brightness: ");
@@ -175,7 +176,7 @@ void brightnessDown()
 
 void hueUp()
 {
-  solidHue = (solidHue + 10) % 360; 
+  solidHue = (solidHue + 2) % 360; 
   fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
   Serial.print("Hue: ");
   Serial.println(solidHue);
@@ -183,7 +184,7 @@ void hueUp()
 
 void hueDown()
 {
-  solidHue = (solidHue - 10) % 360;
+  solidHue = (solidHue - 2) % 360;
   fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
   Serial.print("Hue: ");
   Serial.println(solidHue);
@@ -367,8 +368,9 @@ void loop()
   FastLED.delay(1000/FRAMES_PER_SECOND); 
 
   // do some periodic updates
+  rotary_loop();
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
-  EVERY_N_MILLISECONDS( 20 ) { rotary_loop(); } 
+  // EVERY_N_MILLISECONDS( 20 ) { rotary_loop(); } 
   // EVERY_N_MILLISECONDS( 20 ) { debounceArrayDown(); }
   // EVERY_N_MILLISECONDS( 20 ) { debounceArrayUp(); } 
 }
