@@ -36,15 +36,13 @@ LedEncoderMode nextEncoderMode(LedEncoderMode rotaryMode)
    switch(rotaryMode)
    {
       case LED_COLOR:
+      default:
         temp = LED_MODE;
         break;
       case LED_MODE:
         temp = LED_BRIGHTNESS;
         break;
       case LED_BRIGHTNESS:
-        temp = LED_COLOR;
-        break;
-      default:
         temp = LED_COLOR;
         break;
    }
@@ -65,7 +63,8 @@ unsigned long debounceDelay = 50;    // the debounce time; increase if the outpu
 #define NUM_LEDS    103
 CRGB leds[NUM_LEDS];
 
-#define MAXBRIGHTNESS      755
+#define MAXBRIGHTNESS      255
+#define MINBRIGHTNESS      95
 #define FRAMES_PER_SECOND  120
 int BRIGHTNESS = MAXBRIGHTNESS;
 
@@ -160,7 +159,7 @@ void brightnessUp()
 {
   //Look into Dimming and Brightening Colors - https://github.com/FastLED/FastLED/wiki/Pixel-reference
   //Allows the use of percentage instead of stepping like the below method
-  BRIGHTNESS = (BRIGHTNESS + 1) % MAXBRIGHTNESS;
+  BRIGHTNESS = (BRIGHTNESS + 10) > MAXBRIGHTNESS ? 255 : BRIGHTNESS + 10;
   FastLED.setBrightness(BRIGHTNESS);
   Serial.print("Brightness: ");
   Serial.println(BRIGHTNESS);
@@ -168,7 +167,7 @@ void brightnessUp()
 
 void brightnessDown()
 {
-  BRIGHTNESS = (BRIGHTNESS - 1) % MAXBRIGHTNESS;
+  BRIGHTNESS = (BRIGHTNESS - 10) < MINBRIGHTNESS ? 255 : BRIGHTNESS - 10;
   FastLED.setBrightness(BRIGHTNESS);
   Serial.print("Brightness: ");
   Serial.println(BRIGHTNESS);
@@ -178,12 +177,16 @@ void hueUp()
 {
   solidHue = (solidHue + 10) % 360; 
   fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
+  Serial.print("Hue: ");
+  Serial.println(solidHue);
 }
 
 void hueDown()
 {
   solidHue = (solidHue - 10) % 360;
   fill_solid(leds, NUM_LEDS, CHSV(solidHue, 255, BRIGHTNESS));
+  Serial.print("Hue: ");
+  Serial.println(solidHue);
 }
 
 void debounceArrayDown()
@@ -337,6 +340,8 @@ void setup() {
 
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
+
+  Serial.println("Ready...");
 }
 
 void loop()
